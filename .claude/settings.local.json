@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "*",
+      "Bash(*)",
+      "Bash(java -version)",
+      "Bash(mvn -version)",
+      "Bash(mvn -q -o compile)",
+      "Bash(mvn -q compile)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "figma"
+  ]
+}
