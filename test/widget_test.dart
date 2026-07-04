@@ -2,12 +2,12 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:untitled_poi/constants/registrar_portal.dart';
-import 'package:untitled_poi/model/bean/allotment_model.dart';
-import 'package:untitled_poi/model/bean/ipo_model.dart';
-import 'package:untitled_poi/services/mock_data.dart';
-import 'package:untitled_poi/utils/global_utility.dart';
-import 'package:untitled_poi/utils/date_utility.dart';
+import 'package:untitled_poi/global/constant/registrar_portal.dart';
+import 'package:untitled_poi/features/ipo_detail/domain/allotment_model.dart';
+import 'package:untitled_poi/features/home/domain/ipo_model.dart';
+import 'package:untitled_poi/global/services/mock_data.dart';
+import 'package:untitled_poi/global/utils/global_utility.dart';
+import 'package:untitled_poi/global/utils/date_utility.dart';
 
 void main() {
   group('MockData', () {

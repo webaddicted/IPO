@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:untitled_poi/model/bean/ipo_detail_model.dart';
-import 'package:untitled_poi/model/bean/ipo_model.dart';
+import 'package:untitled_poi/features/ipo_detail/domain/ipo_detail_model.dart';
+import 'package:untitled_poi/features/home/domain/ipo_model.dart';
 
 void main() {
   group('IpoModel.fromJson', () {
