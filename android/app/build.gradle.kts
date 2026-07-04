@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.untitled_poi"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -63,7 +63,7 @@ class IpoDetailModel {
     final r = JsonReader(ipoJson);
 
     List<T> list<T>(String key, T Function(Map<String, dynamic>) fromJson) {
-      final raw = json[key];
+      final raw = json[key] ?? json[_snake(key)];
       if (raw is List) {
         return raw
             .whereType<Map>()
@@ -74,6 +74,23 @@ class IpoDetailModel {
     }
 
     final companyRaw = json['company'];
+    Map<String, dynamic>? companyMap;
+    if (companyRaw is Map) {
+      companyMap = Map<String, dynamic>.from(companyRaw.cast<String, dynamic>());
+    }
+
+    final leadManagers = list('leadManagers', (m) => m);
+    if (leadManagers.isNotEmpty) {
+      final names = leadManagers
+          .map((m) => m['name'])
+          .whereType<String>()
+          .where((n) => n.isNotEmpty)
+          .join(', ');
+      if (names.isNotEmpty) {
+        companyMap ??= <String, dynamic>{};
+        companyMap['leadManagers'] = names;
+      }
+    }
 
     return IpoDetailModel(
       ipo: IpoModel.fromJson(ipoJson),
@@ -85,7 +102,10 @@ class IpoDetailModel {
       totalIssueSizeShares: r.number(JsonReader.alias('total_issue_size_shares')),
       totalIssueSizeAmount: r.number(JsonReader.alias('total_issue_size_amount')),
       marketMakerShares: r.number(JsonReader.alias('market_maker_shares')),
-      registrar: r.str(['registrar']),
+      registrar: JsonReader(json).str([
+        ...JsonReader.alias('registrar_name'),
+        'registrar',
+      ]) ?? r.str([...JsonReader.alias('registrar_name'), 'registrar']),
       gmp: list('gmp', GmpPoint.fromJson),
       subscriptions: list('subscriptions', SubscriptionRow.fromJson),
       financials: list('financials', FinancialRow.fromJson),
@@ -93,9 +113,14 @@ class IpoDetailModel {
       reservations: list('reservations', ReservationRow.fromJson),
       lotSizes: list('lotSizes', LotSizeRow.fromJson),
       importantDates: list('importantDates', ImportantDateRow.fromJson),
-      company: companyRaw is Map
-          ? CompanyInfoModel.fromJson(companyRaw.cast<String, dynamic>())
-          : null,
+      company: companyMap != null ? CompanyInfoModel.fromJson(companyMap) : null,
+    );
+  }
+
+  static String _snake(String camel) {
+    return camel.replaceAllMapped(
+      RegExp(r'[A-Z]'),
+      (m) => '_${m.group(0)!.toLowerCase()}',
     );
   }
 }
@@ -103,14 +128,24 @@ class IpoDetailModel {
 class GmpPoint {
   final num? price;
   final num? percent;
+  final num? estimatedListing;
+  final num? issuePrice;
   final DateTime? recordedAt;
-  const GmpPoint({this.price, this.percent, this.recordedAt});
+  const GmpPoint({
+    this.price,
+    this.percent,
+    this.estimatedListing,
+    this.issuePrice,
+    this.recordedAt,
+  });
 
   factory GmpPoint.fromJson(Map<String, dynamic> j) {
     final r = JsonReader(j);
     return GmpPoint(
       price: r.number(JsonReader.alias('gmp_price')),
       percent: r.number(JsonReader.alias('gmp_percent')),
+      estimatedListing: r.number(JsonReader.alias('estimated_listing_price')),
+      issuePrice: r.number(JsonReader.alias('issue_price')),
       recordedAt: r.date(JsonReader.alias('recorded_at')),
     );
   }
@@ -123,6 +158,7 @@ class SubscriptionRow {
   final num? nii;
   final num? retail;
   final num? employee;
+  final num? marketMaker;
   const SubscriptionRow({
     required this.bucket,
     this.total,
@@ -130,6 +166,7 @@ class SubscriptionRow {
     this.nii,
     this.retail,
     this.employee,
+    this.marketMaker,
   });
 
   factory SubscriptionRow.fromJson(Map<String, dynamic> j) {
@@ -141,6 +178,7 @@ class SubscriptionRow {
       nii: r.number(JsonReader.alias('nii_subscription')),
       retail: r.number(JsonReader.alias('retail_subscription')),
       employee: r.number(JsonReader.alias('employee_subscription')),
+      marketMaker: r.number(JsonReader.alias('market_maker_subscription')),
     );
   }
 }
@@ -149,10 +187,23 @@ class FinancialRow {
   final String? period;
   final num? revenue;
   final num? pat;
+  final num? ebitda;
+  final num? pbt;
   final num? totalAssets;
   final num? netWorth;
-  const FinancialRow(
-      {this.period, this.revenue, this.pat, this.totalAssets, this.netWorth});
+  final num? reservesSurplus;
+  final num? totalBorrowing;
+  const FinancialRow({
+    this.period,
+    this.revenue,
+    this.pat,
+    this.ebitda,
+    this.pbt,
+    this.totalAssets,
+    this.netWorth,
+    this.reservesSurplus,
+    this.totalBorrowing,
+  });
 
   factory FinancialRow.fromJson(Map<String, dynamic> j) {
     final r = JsonReader(j);
@@ -160,8 +211,15 @@ class FinancialRow {
       period: r.str(['period']),
       revenue: r.number(['revenue']),
       pat: r.number(JsonReader.alias('profit_after_tax')),
+      ebitda: r.number(['ebitda']),
+      pbt: r.number(JsonReader.alias('profit_before_tax')),
       totalAssets: r.number(JsonReader.alias('total_assets')),
       netWorth: r.number(JsonReader.alias('net_worth')),
+      reservesSurplus: r.number([
+        ...JsonReader.alias('reserves_and_surplus'),
+        'reserves_surplus',
+      ]),
+      totalBorrowing: r.number(JsonReader.alias('total_borrowing')),
     );
   }
 }
@@ -193,7 +251,10 @@ class ReservationRow {
     return ReservationRow(
       category: r.str(['category']) ?? '',
       shares: r.number(JsonReader.alias('shares_offered')),
-      percent: r.number(JsonReader.alias('percent_of_total')),
+      percent: r.number([
+        ...JsonReader.alias('percent_of_total'),
+        ...JsonReader.alias('percent_of_net_issue'),
+      ]),
     );
   }
 }
@@ -234,12 +295,24 @@ class ImportantDateRow {
 
 class CompanyInfoModel {
   final String? description;
+  final String? industry;
+  final String? businessSegment;
+  final String? productDetails;
+  final String? manufacturingLocation;
+  final String? customerSegment;
+  final String? exportInfo;
   final String? promoters;
   final String? leadManagers;
   final String? objectives;
   final String? websiteUrl;
   const CompanyInfoModel({
     this.description,
+    this.industry,
+    this.businessSegment,
+    this.productDetails,
+    this.manufacturingLocation,
+    this.customerSegment,
+    this.exportInfo,
     this.promoters,
     this.leadManagers,
     this.objectives,
@@ -250,6 +323,12 @@ class CompanyInfoModel {
     final r = JsonReader(j);
     return CompanyInfoModel(
       description: r.str(['description']),
+      industry: r.str(['industry']),
+      businessSegment: r.str(JsonReader.alias('business_segment')),
+      productDetails: r.str(JsonReader.alias('product_details')),
+      manufacturingLocation: r.str(JsonReader.alias('manufacturing_location')),
+      customerSegment: r.str(JsonReader.alias('customer_segment')),
+      exportInfo: r.str(JsonReader.alias('export_info')),
       promoters: r.str(['promoters']),
       leadManagers: r.str(JsonReader.alias('lead_managers')),
       objectives: r.str(['objectives']),

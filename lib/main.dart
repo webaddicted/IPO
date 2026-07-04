@@ -38,6 +38,8 @@ class IpoTrackerApp extends StatelessWidget {
           PointerDeviceKind.stylus,
         },
       ),
+
+
       initialBinding: AppBinding(),
       initialRoute: Routes.home,
       getPages: [

@@ -53,7 +53,7 @@ flutter run
 flutter run \
   --dart-define=SUPABASE_URL=https://YOUR.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=eyJ... \
-  --dart-define=API_BASE_URL=http://10.0.2.2:8080
+  --dart-define=API_BASE_URL=http://10.0.2.2:8081
 ```
 
 > **The app runs with no backend at all** — when Supabase keys are absent it

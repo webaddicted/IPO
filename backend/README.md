@@ -1,92 +1,104 @@
-# IPO Tracker — Spring Boot Backend
+# IPO Tracker — Python FastAPI Backend
 
-Java 17 + Spring Boot 3.3 service that **scrapes** Indian IPO data (JSoup) and
-**serves** it as a REST API. It writes to the same Supabase PostgreSQL database
-the Flutter app reads from directly for realtime.
+Python 3.9+ service that **scrapes** Indian IPO data and **serves** it as a REST API.
+It writes to the same Supabase PostgreSQL database the Flutter app reads from.
+
+## Stack
+
+- **FastAPI** + **Uvicorn** — REST API
+- **SQLAlchemy** + **psycopg2** — Postgres (Supabase)
+- **httpx** + **BeautifulSoup** — JSON/HTML scraping (chittorgarh.com, investorgain.com)
+- **APScheduler** — scheduled scraper jobs
 
 ## Run
 
 ```bash
 cd backend
-
-# Provide Supabase credentials (Project Settings → Database)
-export SUPABASE_DB_URL="jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require"
-export SUPABASE_DB_USER="postgres.ddtztnkkhlldxrumajxb"
-export SUPABASE_DB_PASSWORD="your-db-password"   # from Supabase → Database settings
-export CORS_ORIGINS="*"                        # tighten for production
-
-# Local Homebrew Postgres instead: export SPRING_PROFILES_ACTIVE=local
-
-./mvnw spring-boot:run                # or: mvn spring-boot:run
+cp .env.example .env   # set SUPABASE_DB_PASSWORD or DATABASE_URL
+./run.sh
 ```
 
-> The app uses `spring.jpa.hibernate.ddl-auto=validate` — apply
-> `supabase/migrations/0001_init.sql` **before** first run, or startup fails.
+The API listens on **port 8081** by default (`PORT` in `.env`).
 
-To run without scraping (API only, e.g. against seeded data): `export SCRAPER_ENABLED=false`.
+Apply [`supabase/migrations/`](../supabase/migrations/) before first run if the schema is empty.
+
+To run API only (no scheduled scraping): `SCRAPER_ENABLED=false` in `.env`.
 
 ## REST API
 
 | Method | Path | Notes |
 |--------|------|-------|
 | GET | `/health` | Liveness |
+| GET | `/api/v1/ipos/basic?type=mainline\|sme&status=...` | Optional status filter |
 | GET | `/api/v1/ipos/current?type=mainline\|sme` | Upcoming + open + closed |
 | GET | `/api/v1/ipos/listed?type=mainline\|sme` | Already listed |
 | GET | `/api/v1/ipos/{id}` | Full detail aggregate (all tabs) |
 | GET | `/api/v1/ipos/{id}/gmp` | GMP time series |
 | GET | `/api/v1/ipos/{id}/subscription` | Overall + day-wise |
-| POST | `/api/v1/admin/scrape/list` | Trigger list scrape now |
-| POST | `/api/v1/admin/scrape/gmp` | Trigger GMP scrape now |
-| POST | `/api/v1/admin/scrape/detail/{slug}` | Re-scrape one IPO's detail page |
+| POST | `/api/v1/allotment` | Allotment check (manual registrar fallback) |
+| GET | `/api/v1/scrape` | **Scrape now** — fetches all IPO data from chittorgarh.com and stores in Supabase |
 
-## Scheduler
+## Scheduler (separate app)
 
-| Job | Cadence |
-|-----|---------|
-| `refreshIpoList` | every `scraper.list-fixed-rate-ms` (default 1h) |
-| `refreshGmp` | every 30 min, 09–16h, Mon–Fri, `Asia/Kolkata` |
+The API server and scraper scheduler run as **two processes**:
+
+| Process | Command | Role |
+|---------|---------|------|
+| API | `./run.sh` | REST endpoints |
+| Scheduler | `./run_scheduler.sh` | Auto-scrape on interval |
+
+Scheduler reuses the same `run_scrape` logic as `GET /api/v1/scrape` (list → subscription → details → GMP → Supabase).
+
+Configure interval in `.env`:
+
+```bash
+SCRAPER_INTERVAL_MINUTES=60   # 30, 60, or 120
+SCHEDULER_RUN_ON_START=false    # true = scrape immediately on startup
+```
 
 ## Layout
 
 ```
-src/main/java/com/ipotracker/
-├── IpoTrackerApplication.java
-├── config/WebConfig.java            # CORS
-├── controller/                      # REST + error handling + health
-├── dto/Dtos.java                    # response records
-├── model/                           # JPA entities + enums
-├── repository/Repositories.java     # Spring Data interfaces
-├── scheduler/IpoScheduler.java
-└── service/                         # IpoService (read), IpoScraperService,
-                                     # GmpScraperService, ParseUtil
+app/
+├── main.py                 # FastAPI API server
+├── scheduler_app.py        # Standalone scheduler entry point
+├── config.py               # Settings from .env
+├── scheduler.py            # APScheduler job wiring
+├── api/routes/             # health, ipos, allotment, scrape
+├── db/models.py            # SQLAlchemy ORM
+├── schemas/                # Pydantic response models (camelCase JSON)
+├── services/               # Read-side + allotment
+└── scrapers/               # List, GMP, subscription, detail scrapers
 ```
 
-## Scraping approach (JSON API, not HTML)
+## Scraping approach (JSON API, not HTML lists)
 
-chittorgarh.com is a **Next.js single-page app** — its list pages contain no
-server-rendered `<table>`, so HTML/CSS scraping does not work. The React client
-reads a JSON report API, which `IpoScraperService` targets directly (verified
-against live responses):
+chittorgarh.com list pages are SPA-backed. Scrapers target the site's JSON report API:
 
 ```
 GET https://webnodejs.chittorgarh.com/cloud/report/data-read/
     {reportId}/{page}/{month}/{year}/{financialYear}/{sort}/{parameter}
 ```
 
-- **reportId `82`** = the "IPO in India" report.
-- **`{parameter}`** is the string code `mainboard` / `sme` / `all` (it is *not*
-  a numeric id — that returns `"No params data found."`).
-- Field mapping uses the clean `~`-prefixed columns (`~IPO`, `~URLRewrite_Folder_Name`,
-  `~Issue_Open_Date`, `~IssueCloseDate`, `~ListingDate`, `~compare_image`) plus
-  `Issue Price (Rs.)` and `Total Issue Amount …(Rs.cr.)` (crore → absolute INR).
-- Report params are discoverable via `…/cloud/report/info-read/{reportId}`.
+- **reportId `82`** — IPO list (`mainboard` / `sme`)
+- **reportId `98`** — subscription (`all`)
+- **investorgain report `331`** — GMP (`ipo` / `sme`)
+- **detail-read/{id}** — per-IPO enrichment
 
-### ⚠️ Notes
-- Review chittorgarh.com's Terms of Service before running in production.
-- `scraper.polite-delay-ms` (default 2.5s) spaces out requests — keep it.
-- **Detail enrichment** (GMP, subscription, lot size, financials) lives on
-  per-IPO pages that are *also* SPA-backed JSON reports; `scrapeDetail` is a
-  stub hook awaiting that report id. `GmpScraperService` still attempts HTML and
-  will simply find nothing on the SPA — consider `investorgain.com` for GMP.
-- `IpoScraperServiceTest` covers URL building, id extraction, and IST date
-  parsing against the real JSON shape.
+Review chittorgarh.com Terms of Service before production use. Keep `SCRAPER_POLITE_DELAY_MS` (default 2.5s).
+
+## Tests
+
+```bash
+cd backend
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/pytest tests/ -q
+```
+
+## Flutter client
+
+Point the app at this API:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8081
+```

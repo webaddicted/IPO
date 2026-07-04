@@ -25,12 +25,18 @@ class DetailController extends GetxController {
   }
 
   Future<void> load() async {
+    if (ipoId.isEmpty) {
+      error.value = 'Missing IPO id';
+      loading.value = false;
+      return;
+    }
     try {
       loading.value = true;
-      detail.value = await repo.fetchDetail(ipoId);
       error.value = '';
+      detail.value = await repo.fetchDetail(ipoId);
     } catch (e) {
       error.value = e.toString();
+      detail.value = null;
     } finally {
       loading.value = false;
     }

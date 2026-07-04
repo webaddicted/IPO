@@ -76,7 +76,9 @@ class IpoCard extends StatelessWidget {
                 _divider(),
                 _metric('Lot Size', '${ipo.lotSize ?? '—'}'),
                 _divider(),
-                _gmpMetric(gmpColor),
+                ipo.status == IpoStatus.listed
+                    ? _listedMetric()
+                    : _gmpMetric(gmpColor),
               ],
             ),
           ),
@@ -192,6 +194,36 @@ class IpoCard extends StatelessWidget {
             text,
             style: AppTextStyle.value.copyWith(color: color, fontSize: 13),
             maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _listedMetric() {
+    final listed = ipo.listedPrice;
+    final issue = ipo.issuePrice ?? ipo.offerPriceMax ?? ipo.offerPriceMin;
+    Color? color;
+    String text = '—';
+    if (listed != null) {
+      text = GlobalUtility.rupee(listed);
+      if (issue != null && issue != 0) {
+        final pct = ((listed - issue) / issue) * 100;
+        text = '$text (${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%)';
+        color = pct >= 0 ? AppColors.gain : AppColors.loss;
+      }
+    }
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('LISTING', style: AppTextStyle.metricLabel),
+          const SizedBox(height: 4),
+          Text(
+            text,
+            style: AppTextStyle.value.copyWith(color: color, fontSize: 13),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],

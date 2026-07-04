@@ -6,15 +6,25 @@ import '../constants/api_const.dart';
 import '../model/bean/ipo_model.dart';
 import '../model/bean/ipo_detail_model.dart';
 import '../model/bean/allotment_model.dart';
+import 'api_logging_client.dart';
 
-/// Talks to the Spring Boot REST API. Used for the rich detail aggregate
+/// Talks to the FastAPI REST API. Used for the rich detail aggregate
 /// (the backend joins all child tables in one call).
 class ApiService {
   final http.Client _client;
-  ApiService([http.Client? client]) : _client = client ?? http.Client();
+  ApiService([http.Client? client]) : _client = client ?? LoggingHttpClient();
 
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('${AppConfig.apiBaseUrl}$path').replace(queryParameters: query);
+
+  Future<List<IpoModel>> basic(IpoKind kind, {IpoStatus? status}) async {
+    final query = <String, String>{'type': kind.name};
+    if (status != null) query['status'] = status.name;
+    final res = await _client
+        .get(_uri(ApiConst.basicIpos, query))
+        .timeout(const Duration(seconds: 12));
+    return _parseList(res);
+  }
 
   Future<List<IpoModel>> current(IpoKind kind) async {
     final res = await _client
@@ -33,12 +43,15 @@ class ApiService {
   Future<IpoDetailModel> detail(String id) async {
     final res = await _client
         .get(_uri(ApiConst.ipoDetail(id)))
-        .timeout(const Duration(seconds: 12));
+        .timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) {
       throw ApiException('detail ${res.statusCode}');
     }
-    return IpoDetailModel.fromJson(
-        jsonDecode(res.body) as Map<String, dynamic>);
+    final body = jsonDecode(res.body);
+    if (body is! Map<String, dynamic>) {
+      throw ApiException('detail invalid response');
+    }
+    return IpoDetailModel.fromJson(body);
   }
 
   Future<AllotmentResult> checkAllotment(AllotmentRequest req) async {

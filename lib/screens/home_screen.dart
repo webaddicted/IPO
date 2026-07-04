@@ -236,83 +236,88 @@ class _IpoListSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (controller.loading.value) {
-      return SliverPadding(
-        padding: EdgeInsets.all(Responsive.horizontalPadding(context)),
-        sliver: SliverToBoxAdapter(child: _LoadingGrid(context: context)),
-      );
-    }
-    if (controller.error.isNotEmpty && controller.ipos.isEmpty) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: _ErrorView(message: controller.error.value, onRetry: controller.refreshData),
-      );
-    }
-    if (controller.ipos.isEmpty) {
-      return const SliverFillRemaining(
-        hasScrollBody: false,
-        child: EmptyState(
-          icon: Icons.inbox_rounded,
-          title: StringConst.noData,
-          subtitle: 'Pull to refresh or check back later',
-        ),
-      );
-    }
+    return Obx(() {
+      // Rebuild when nav/tab, loading state, or list data changes.
+      controller.navIndex.value;
+      controller.tabIndex.value;
+      if (controller.loading.value) {
+        return SliverPadding(
+          padding: EdgeInsets.all(Responsive.horizontalPadding(context)),
+          sliver: SliverToBoxAdapter(child: _LoadingGrid(context: context)),
+        );
+      }
+      if (controller.error.isNotEmpty && controller.ipos.isEmpty) {
+        return SliverFillRemaining(
+          hasScrollBody: false,
+          child: _ErrorView(message: controller.error.value, onRetry: controller.refreshData),
+        );
+      }
+      if (controller.ipos.isEmpty) {
+        return const SliverFillRemaining(
+          hasScrollBody: false,
+          child: EmptyState(
+            icon: Icons.inbox_rounded,
+            title: StringConst.noData,
+            subtitle: 'Pull to refresh or check back later',
+          ),
+        );
+      }
 
-    final cols = Responsive.gridColumns(context);
-    final hPad = Responsive.horizontalPadding(context);
+      final cols = Responsive.gridColumns(context);
+      final hPad = Responsive.horizontalPadding(context);
 
-    if (cols == 1) {
+      if (cols == 1) {
+        return SliverPadding(
+          padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 24),
+          sliver: SliverToBoxAdapter(
+            child: RefreshIndicator(
+              onRefresh: controller.refreshData,
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: controller.ipos.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 14),
+                itemBuilder: (context, i) {
+                  final ipo = controller.ipos[i];
+                  return IpoCard(
+                    ipo: ipo,
+                    onTap: () => Get.toNamed(
+                      Routes.detail,
+                      arguments: {'id': ipo.id, 'name': ipo.companyName},
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      }
+
       return SliverPadding(
         padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 24),
-        sliver: SliverToBoxAdapter(
-          child: RefreshIndicator(
-            onRefresh: controller.refreshData,
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: controller.ipos.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 14),
-              itemBuilder: (context, i) {
-                final ipo = controller.ipos[i];
-                return IpoCard(
-                  ipo: ipo,
-                  onTap: () => Get.toNamed(
-                    Routes.detail,
-                    arguments: {'id': ipo.id, 'name': ipo.companyName},
-                  ),
-                );
-              },
-            ),
+        sliver: SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: Responsive.isDesktop(context) ? 1.35 : 1.15,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, i) {
+              final ipo = controller.ipos[i];
+              return IpoCard(
+                ipo: ipo,
+                onTap: () => Get.toNamed(
+                  Routes.detail,
+                  arguments: {'id': ipo.id, 'name': ipo.companyName},
+                ),
+              );
+            },
+            childCount: controller.ipos.length,
           ),
         ),
       );
-    }
-
-    return SliverPadding(
-      padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 24),
-      sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: cols,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: Responsive.isDesktop(context) ? 1.35 : 1.15,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, i) {
-            final ipo = controller.ipos[i];
-            return IpoCard(
-              ipo: ipo,
-              onTap: () => Get.toNamed(
-                Routes.detail,
-                arguments: {'id': ipo.id, 'name': ipo.companyName},
-              ),
-            );
-          },
-          childCount: controller.ipos.length,
-        ),
-      ),
-    );
+    });
   }
 }
 

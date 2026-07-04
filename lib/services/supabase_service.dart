@@ -25,27 +25,27 @@ class SupabaseService {
     return _db
         .from('ipos')
         .stream(primaryKey: ['id'])
+        .eq('ipo_type', kind.name)
+        .order('company_name')
         .map((rows) => rows
-            .map(IpoModel.fromJson)
-            .where((i) =>
-                i.kind == kind &&
-                (listed ? i.status == IpoStatus.listed : i.status != IpoStatus.listed))
+            .map((e) => IpoModel.fromJson(e))
+            .where((i) => listed ? i.status == IpoStatus.listed : i.status != IpoStatus.listed)
             .toList());
   }
 
   Future<List<IpoModel>> fetchIpos({required IpoKind kind, required bool listed}) async {
-    final query = _db.from('ipos').select().eq('ipo_type', kind.name);
-    final rows = listed
-        ? await query.eq('status', 'listed')
-        : await query.neq('status', 'listed');
+    var query = _db.from('ipos').select().eq('ipo_type', kind.name);
+    query = listed ? query.eq('status', 'listed') : query.neq('status', 'listed');
+    final rows = await query.order('company_name');
     return (rows as List)
         .map((e) => IpoModel.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
   }
 
-  /// Assembles the full detail aggregate from the child tables.
+  /// Assembles the full detail aggregate from the child tables (0003 schema).
   Future<IpoDetailModel> fetchDetail(String id) async {
     final ipo = await _db.from('ipos').select().eq('id', id).single();
+    final ipoMap = Map<String, dynamic>.from(ipo as Map);
 
     Future<List<Map<String, dynamic>>> child(String table, [String orderBy = '']) async {
       var q = _db.from(table).select().eq('ipo_id', id);
@@ -54,21 +54,34 @@ class SupabaseService {
     }
 
     final company = await _db
-        .from('company_info')
+        .from('company_profiles')
         .select()
         .eq('ipo_id', id)
         .maybeSingle();
 
+    final leadManagers = await child('lead_managers');
+    Map<String, dynamic>? companyMap;
+    if (company != null) {
+      companyMap = Map<String, dynamic>.from(company as Map);
+      final names = leadManagers
+          .map((m) => m['name'])
+          .whereType<String>()
+          .where((n) => n.isNotEmpty)
+          .join(', ');
+      if (names.isNotEmpty) companyMap['lead_managers'] = names;
+    }
+
     final aggregate = <String, dynamic>{
-      'ipo': ipo,
-      'gmp': await child('gmp_data', 'recorded_at'),
-      'subscriptions': await child('subscription_data'),
-      'financials': await child('financial_data'),
-      'kpis': await child('kpi_data'),
-      'reservations': await child('ipo_reservation'),
-      'lotSizes': await child('lot_size_tier'),
+      'ipo': ipoMap,
+      'registrar': ipoMap['registrar_name'],
+      'gmp': await child('gmp_history', 'recorded_at'),
+      'subscriptions': await child('subscription_snapshots', 'subscription_date'),
+      'financials': await child('financial_periods', 'period'),
+      'kpis': await child('kpi_metrics', 'metric'),
+      'reservations': await child('ipo_reservations', 'category'),
+      'lotSizes': await child('lot_size_tiers', 'applicant'),
       'importantDates': await child('important_dates', 'sort_order'),
-      'company': company,
+      'company': companyMap,
     };
     return IpoDetailModel.fromJson(aggregate);
   }

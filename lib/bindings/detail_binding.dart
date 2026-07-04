@@ -8,10 +8,16 @@ class DetailBinding extends Bindings {
   @override
   void dependencies() {
     final args = (Get.arguments as Map?) ?? const {};
-    Get.create<DetailController>(() => DetailController(
-          Get.find<IpoRepository>(),
-          args['id']?.toString() ?? '',
-          args['name']?.toString() ?? '',
-        ));
+    final id = args['id']?.toString() ?? '';
+    final name = args['name']?.toString() ?? '';
+
+    // lazyPut: one controller per route visit. Get.create would spawn a new
+    // instance on every GetView rebuild (Get.find), leaving loading stuck true.
+    if (Get.isRegistered<DetailController>()) {
+      Get.delete<DetailController>();
+    }
+    Get.lazyPut<DetailController>(
+      () => DetailController(Get.find<IpoRepository>(), id, name),
+    );
   }
 }

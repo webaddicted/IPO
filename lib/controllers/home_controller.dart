@@ -32,6 +32,7 @@ class HomeController extends GetxController {
   void selectNav(int i) {
     if (i == navIndex.value) return;
     navIndex.value = i;
+    if (i == 2) return; // Offers tab — no IPO list
     _subscribe();
   }
 
@@ -57,14 +58,21 @@ class HomeController extends GetxController {
     _sub?.cancel();
     loading.value = true;
     error.value = '';
+    ipos.clear();
     _sub = repo.watchIpos(kind: kind, listed: listed).listen(
       (data) {
         ipos.value = data;
         loading.value = false;
       },
-      onError: (e) {
-        error.value = e.toString();
-        loading.value = false;
+      onError: (e) async {
+        try {
+          ipos.value = await repo.fetchIpos(kind: kind, listed: listed);
+          error.value = '';
+        } catch (fallbackError) {
+          error.value = fallbackError.toString();
+        } finally {
+          loading.value = false;
+        }
       },
     );
   }

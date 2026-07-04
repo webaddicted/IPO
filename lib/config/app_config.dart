@@ -1,33 +1,41 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 /// Central runtime configuration.
 ///
-/// Values are read from --dart-define so secrets stay out of source. Example:
+/// Override with --dart-define when needed, e.g. physical Android device:
 ///
-/// flutter run \
-///   --dart-define=SUPABASE_URL=https://ddtztnkkhlldxrumajxb.supabase.co \
-///   --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
-///   --dart-define=API_BASE_URL=http://10.0.2.2:8080
-///
-/// When Supabase keys are absent the app still runs against bundled mock data,
-/// so it is demoable with zero setup.
+/// flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8081
 class AppConfig {
   const AppConfig._();
 
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://ddtztnkkhlldxrumajxb.supabase.co',
+    defaultValue: '',
   );
   static const String supabasePublishableKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
-    defaultValue: 'sb_publishable_BpIAizOHgzSstZbrWH59hg_RxqViofk',
+    defaultValue: '',
   );
 
   /// Legacy alias — prefer [supabasePublishableKey].
   static const String supabaseAnonKey = supabasePublishableKey;
 
-  /// Spring Boot API. 10.0.2.2 is the Android emulator's alias for host machine.
-  static const String apiBaseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8080');
+  static const String _apiFromEnv =
+      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
+  /// FastAPI backend (`http://localhost:8081/doc`).
+  /// Defaults to the local dev server; Android emulator uses `10.0.2.2`.
+  static String get apiBaseUrl {
+    if (_apiFromEnv.isNotEmpty) return _apiFromEnv;
+    if (kIsWeb) return 'http://localhost:8081';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8081';
+    return 'http://localhost:8081';
+  }
 
   static bool get hasSupabase =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
+
+  static bool get hasApi => apiBaseUrl.isNotEmpty;
 }

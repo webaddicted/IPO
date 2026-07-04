@@ -233,11 +233,15 @@ class MetricChip extends StatelessWidget {
                   Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.7)),
                   const SizedBox(width: 4),
                 ],
-                Text(
-                  label.toUpperCase(),
-                  style: AppTextStyle.caption.copyWith(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 10,
+                Expanded(
+                  child: Text(
+                    label.toUpperCase(),
+                    style: AppTextStyle.caption.copyWith(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

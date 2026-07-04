@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../constants/string_const.dart';
 import '../controllers/detail_controller.dart';
 import '../model/bean/ipo_detail_model.dart';
+import '../model/bean/ipo_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/text_style.dart';
 import '../utils/date_utility.dart';
@@ -26,7 +28,7 @@ class IpoDetailScreen extends GetView<DetailController> {
       if (controller.loading.value) {
         return Scaffold(
           backgroundColor: AppColors.scaffold,
-          body: const Center(child: CircularProgressIndicator()),
+          body: _DetailShimmer(wide: wide),
         );
       }
       final d = controller.detail.value;
@@ -248,6 +250,7 @@ class _DetailHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final ipo = d.ipo;
     final gmpColor = (ipo.latestGmp ?? 0) > 0 ? AppColors.gain : AppColors.neutral;
+    final isListed = ipo.status == IpoStatus.listed;
 
     return HeroBanner(
       showBack: true,
@@ -302,11 +305,12 @@ class _DetailHero extends StatelessWidget {
           Row(
             children: [
               MetricChip(
-                label: 'Expected GMP',
-                value:
-                    '${GlobalUtility.rupee(ipo.latestGmp)} (${GlobalUtility.percent(ipo.latestGmpPercent)})',
-                valueColor: gmpColor == AppColors.neutral ? Colors.white : gmpColor,
-                icon: Icons.trending_up_rounded,
+                label: isListed ? 'Listing Price' : 'Expected GMP',
+                value: isListed
+                    ? GlobalUtility.rupee(ipo.listedPrice)
+                    : '${GlobalUtility.rupee(ipo.latestGmp)} (${GlobalUtility.percent(ipo.latestGmpPercent)})',
+                valueColor: isListed ? Colors.white : (gmpColor == AppColors.neutral ? Colors.white : gmpColor),
+                icon: isListed ? Icons.show_chart_rounded : Icons.trending_up_rounded,
               ),
               const SizedBox(width: 8),
               MetricChip(
@@ -617,4 +621,95 @@ class _DetailTabContent extends StatelessWidget {
         icon: Icons.inbox_rounded,
         title: StringConst.noData,
       );
+}
+
+/// Skeleton placeholder while the detail aggregate loads.
+class _DetailShimmer extends StatelessWidget {
+  final bool wide;
+  const _DetailShimmer({required this.wide});
+
+  @override
+  Widget build(BuildContext context) {
+    final hPad = Responsive.horizontalPadding(context);
+    return Shimmer.fromColors(
+      baseColor: AppColors.divider,
+      highlightColor: AppColors.card,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(hPad, MediaQuery.paddingOf(context).top + 8, hPad, 24),
+              decoration: const BoxDecoration(gradient: AppColors.heroGradient),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _box(width: 40, height: 40, radius: 12),
+                  const SizedBox(height: 16),
+                  _box(width: wide ? 320 : double.infinity, height: 28, radius: 8),
+                  const SizedBox(height: 10),
+                  _box(width: wide ? 200 : 180, height: 16, radius: 6),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(child: _box(height: 56, radius: 12)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _box(height: 56, radius: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: _box(height: 56, radius: 12)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _box(height: 56, radius: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _box(width: double.infinity, height: 48, radius: 12),
+                ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Container(
+              color: AppColors.card,
+              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
+              child: Row(
+                children: [
+                  for (int i = 0; i < 4; i++) ...[
+                    if (i > 0) const SizedBox(width: 12),
+                    _box(width: 72, height: 24, radius: 6),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(hPad, 20, hPad, 32),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _box(width: double.infinity, height: i.isEven ? 52 : 44, radius: 12),
+                ),
+                childCount: 8,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _box({double? width, required double height, double radius = 8}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
 }

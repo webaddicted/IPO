@@ -6,67 +6,67 @@ import '../model/bean/ipo_model.dart';
 import '../model/bean/ipo_detail_model.dart';
 import '../model/bean/allotment_model.dart';
 import 'api_service.dart';
-import 'mock_data.dart';
 import 'supabase_service.dart';
 
-/// Single entry point the controllers use. Implements the chosen hybrid policy:
-///
-///  - **Lists**: prefer Supabase realtime; else Supabase fetch; else mock.
-///  - **Detail**: prefer the Spring API aggregate; else Supabase; else mock.
-///
-/// Every path degrades gracefully so the UI always has something to show.
+/// Single entry point for controllers. Reads from the FastAPI backend by default
+/// (`/api/v1/ipos/*`). Supabase is only used when API is unavailable and keys
+/// are configured.
 class IpoRepository {
   final ApiService _api;
-  final SupabaseService _supabase;
+  final SupabaseService? _supabase;
 
   IpoRepository({ApiService? api, SupabaseService? supabase})
       : _api = api ?? ApiService(),
-        _supabase = supabase ?? SupabaseService();
+        _supabase = AppConfig.hasSupabase ? (supabase ?? SupabaseService()) : null;
 
-  /// Realtime stream when Supabase is configured, otherwise a single-shot
-  /// stream from the API/mock so callers can treat both uniformly.
+  /// Polls the backend list endpoints (current / listed).
   Stream<List<IpoModel>> watchIpos({required IpoKind kind, required bool listed}) {
-    if (AppConfig.hasSupabase) {
-      return _supabase.watchIpos(kind: kind, listed: listed);
-    }
-    return Stream.fromFuture(fetchIpos(kind: kind, listed: listed));
+    return _apiWatchIpos(kind: kind, listed: listed);
+  }
+
+  Stream<List<IpoModel>> _apiWatchIpos({required IpoKind kind, required bool listed}) async* {
+    yield await fetchIpos(kind: kind, listed: listed);
+    yield* Stream.periodic(const Duration(seconds: 60))
+        .asyncMap((_) => fetchIpos(kind: kind, listed: listed));
   }
 
   Future<List<IpoModel>> fetchIpos({required IpoKind kind, required bool listed}) async {
-    if (AppConfig.hasSupabase) {
+    if (AppConfig.hasApi) {
       try {
-        return await _supabase.fetchIpos(kind: kind, listed: listed);
+        return listed ? await _api.listed(kind) : await _api.current(kind);
       } catch (e) {
-        debugPrint('Supabase list failed, falling back: $e');
+        debugPrint('API list failed: $e');
+        if (_supabase != null) {
+          return _supabase.fetchIpos(kind: kind, listed: listed);
+        }
+        rethrow;
       }
     }
-    try {
-      return listed ? await _api.listed(kind) : await _api.current(kind);
-    } catch (e) {
-      debugPrint('API list failed, using mock: $e');
-      return MockData.ipos(kind: kind, listed: listed);
+    if (_supabase != null) {
+      return _supabase.fetchIpos(kind: kind, listed: listed);
     }
+    throw ApiException('No API configured. Start the backend on port 8081.');
   }
 
   Future<IpoDetailModel> fetchDetail(String id) async {
-    try {
-      return await _api.detail(id);
-    } catch (e) {
-      debugPrint('API detail failed: $e');
-    }
-    if (AppConfig.hasSupabase) {
+    if (AppConfig.hasApi) {
       try {
-        return await _supabase.fetchDetail(id);
+        return await _api.detail(id);
       } catch (e) {
-        debugPrint('Supabase detail failed: $e');
+        debugPrint('API detail failed: $e');
+        if (_supabase != null) {
+          return _supabase.fetchDetail(id);
+        }
+        rethrow;
       }
     }
-    return MockData.detail(id);
+    if (_supabase != null) {
+      return _supabase.fetchDetail(id);
+    }
+    throw ApiException('No API configured. Start the backend on port 8081.');
   }
 
-  /// Checks allotment via the backend. If the backend is unreachable, degrades
-  /// to a manual-check result pointing at the registrar's official portal
-  /// (resolved client-side from [registrarName]).
+  /// Checks allotment via POST /api/v1/allotment.
   Future<AllotmentResult> checkAllotment(
     AllotmentRequest req, {
     String? registrarName,
@@ -75,7 +75,7 @@ class IpoRepository {
     try {
       return await _api.checkAllotment(req);
     } on ApiException {
-      rethrow; // validation / known API errors should surface to the user
+      rethrow;
     } catch (e) {
       debugPrint('Allotment API unreachable, offering manual link: $e');
       final url = RegistrarPortal.urlFor(registrarName);

@@ -26,6 +26,9 @@ class IpoModel {
   final String? listingAt;
   final num? latestGmp;
   final num? latestGmpPercent;
+  final num? issuePrice;
+  final num? listedPrice;
+  final num? estimatedListingPrice;
   final num? latestSubscription;
 
   const IpoModel({
@@ -36,6 +39,8 @@ class IpoModel {
     required this.status,
     this.offerPriceMin,
     this.offerPriceMax,
+    this.issuePrice,
+    this.listedPrice,
     this.lotSize,
     this.openDate,
     this.closeDate,
@@ -43,6 +48,7 @@ class IpoModel {
     this.listingAt,
     this.latestGmp,
     this.latestGmpPercent,
+    this.estimatedListingPrice,
     this.latestSubscription,
   });
 
@@ -56,6 +62,8 @@ class IpoModel {
       status: ipoStatusFrom(r.str(['status'])),
       offerPriceMin: r.number(JsonReader.alias('offer_price_min')),
       offerPriceMax: r.number(JsonReader.alias('offer_price_max')),
+      issuePrice: r.number(JsonReader.alias('issue_price')),
+      listedPrice: r.number(JsonReader.alias('listed_price')),
       lotSize: r.integer(JsonReader.alias('lot_size')),
       openDate: r.date(JsonReader.alias('open_date')),
       closeDate: r.date(JsonReader.alias('close_date')),
@@ -63,6 +71,7 @@ class IpoModel {
       listingAt: r.str(JsonReader.alias('listing_at')),
       latestGmp: r.number(JsonReader.alias('latest_gmp')),
       latestGmpPercent: r.number(JsonReader.alias('latest_gmp_percent')),
+      estimatedListingPrice: r.number(JsonReader.alias('estimated_listing_price')),
       latestSubscription: r.number(JsonReader.alias('latest_subscription')),
     );
   }
