@@ -16,7 +16,7 @@ listing screen and a 12-tab detail screen.
 │  ┌──────────────────────────────────────────┴───────────────┐   │
 │  │  Flutter app (GetX)                                       │   │
 │  │   • list  ← Supabase realtime stream                      │   │
-│  │   • detail ← Spring API  (falls back to Supabase, mock)   │   │
+│  │   • detail ← Spring API  (falls back to Supabase)           │   │
 │  └───────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -30,15 +30,15 @@ listing screen and a 12-tab detail screen.
 ## Quick start
 
 ### 1. Database
-Apply `supabase/migrations/0001_init.sql` then `supabase/seed/0001_seed.sql`
-in the Supabase SQL Editor. See [`supabase/README.md`](supabase/README.md).
+Apply `supabase/migrations/` in order in the Supabase SQL Editor (latest: `0003_rebuild_schema.sql`).
+See [`supabase/README.md`](supabase/README.md). Then run the backend scraper to populate data.
 
-### 2. Backend (optional for a demo — the app has mock data)
+### 2. Backend
 ```bash
 cd backend
 export SUPABASE_DB_URL="jdbc:postgresql://db.YOUR_PROJECT.supabase.co:5432/postgres"
 export SUPABASE_DB_PASSWORD="..."
-mvn spring-boot:run
+./run.sh
 ```
 See [`backend/README.md`](backend/README.md).
 
@@ -46,19 +46,18 @@ See [`backend/README.md`](backend/README.md).
 ```bash
 flutter pub get
 
-# Zero-config demo (uses bundled mock data):
-flutter run
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8081
+```
 
-# Wired to live data:
+Optional Supabase fallback (when API is down):
+```bash
 flutter run \
   --dart-define=SUPABASE_URL=https://YOUR.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJ... \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=eyJ... \
   --dart-define=API_BASE_URL=http://10.0.2.2:8081
 ```
 
-> **The app runs with no backend at all** — when Supabase keys are absent it
-> serves bundled sample data (`lib/services/mock_data.dart`), so you can see the
-> full UI immediately.
+> **Live data requires the backend** on port 8081 (scraper fills the database).
 
 ## Flutter architecture (clean / GetX)
 
@@ -70,7 +69,7 @@ lib/
 ├── theme/         colors, text styles, ThemeData
 ├── utils/         date / number / json helpers
 ├── model/bean/    ipo_model, ipo_detail_model (+ sub-beans)
-├── services/      api_service, supabase_service, ipo_repository, mock_data
+├── services/      api_service, supabase_service, ipo_repository
 ├── sp/            SharedPreferences (watchlist)
 ├── controllers/   HomeController, DetailController (GetX)
 ├── bindings/      AppBinding, DetailBinding (DI)
@@ -78,15 +77,14 @@ lib/
 └── screens/       home_screen, ipo_detail_screen
 ```
 
-**Data policy** (`IpoRepository`): lists prefer Supabase realtime → API → mock;
-detail prefers the Spring API aggregate → Supabase → mock. Every path degrades
-gracefully.
+**Data policy** (`IpoRepository`): lists and detail read from the FastAPI backend;
+Supabase is an optional fallback when the API is unreachable.
 
 ## Status
 
 | | |
 |--|--|
-| Supabase schema + seed | ✅ |
+| Supabase schema | ✅ |
 | Spring backend (compiles, 34 classes) | ✅ |
 | Flutter app (`flutter analyze`: 0 issues, 8 tests pass) | ✅ |
 

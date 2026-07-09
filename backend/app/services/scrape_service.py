@@ -42,9 +42,9 @@ def validate_scrape(db: Session, counts: dict[str, int]) -> list[str]:
     if ipo_total == 0:
         issues.append("No IPOs in database")
     if company_total < ipo_total:
-        issues.append(f"company_profiles {company_total}/{ipo_total}")
+        issues.append(f"ipo_company_profiles {company_total}/{ipo_total}")
     if sub_total < ipo_total:
-        issues.append(f"subscription_snapshots {sub_total}/{ipo_total}")
+        issues.append(f"ipo_subscription_snapshots {sub_total}/{ipo_total}")
     if scraped_total < ipo_total:
         issues.append(f"details scraped {scraped_total}/{ipo_total}")
     if counts.get("detailsUpdated", 0) < ipo_total:

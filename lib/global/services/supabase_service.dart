@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:untitled_poi/global/constant/app_config.dart';
+import 'package:untitled_poi/global/constant/supabase_tables.dart';
 import 'package:untitled_poi/features/home/domain/ipo_model.dart';
 import 'package:untitled_poi/features/ipo_detail/domain/ipo_detail_model.dart';
 
@@ -23,7 +24,7 @@ class SupabaseService {
   /// Realtime stream of IPOs filtered to a kind + listed/current split.
   Stream<List<IpoModel>> watchIpos({required IpoKind kind, required bool listed}) {
     return _db
-        .from('ipos')
+        .from(SupabaseTables.ipos)
         .stream(primaryKey: ['id'])
         .eq('ipo_type', kind.name)
         .order('company_name')
@@ -34,7 +35,7 @@ class SupabaseService {
   }
 
   Future<List<IpoModel>> fetchIpos({required IpoKind kind, required bool listed}) async {
-    var query = _db.from('ipos').select().eq('ipo_type', kind.name);
+    var query = _db.from(SupabaseTables.ipos).select().eq('ipo_type', kind.name);
     query = listed ? query.eq('status', 'listed') : query.neq('status', 'listed');
     final rows = await query.order('company_name');
     return (rows as List)
@@ -44,7 +45,7 @@ class SupabaseService {
 
   /// Assembles the full detail aggregate from the child tables (0003 schema).
   Future<IpoDetailModel> fetchDetail(String id) async {
-    final ipo = await _db.from('ipos').select().eq('id', id).single();
+    final ipo = await _db.from(SupabaseTables.ipos).select().eq('id', id).single();
     final ipoMap = Map<String, dynamic>.from(ipo as Map);
 
     Future<List<Map<String, dynamic>>> child(String table, [String orderBy = '']) async {
@@ -54,12 +55,12 @@ class SupabaseService {
     }
 
     final company = await _db
-        .from('company_profiles')
+        .from(SupabaseTables.companyProfiles)
         .select()
         .eq('ipo_id', id)
         .maybeSingle();
 
-    final leadManagers = await child('lead_managers');
+    final leadManagers = await child(SupabaseTables.leadManagers);
     Map<String, dynamic>? companyMap;
     if (company != null) {
       companyMap = Map<String, dynamic>.from(company as Map);
@@ -74,13 +75,13 @@ class SupabaseService {
     final aggregate = <String, dynamic>{
       'ipo': ipoMap,
       'registrar': ipoMap['registrar_name'],
-      'gmp': await child('gmp_history', 'recorded_at'),
-      'subscriptions': await child('subscription_snapshots', 'subscription_date'),
-      'financials': await child('financial_periods', 'period'),
-      'kpis': await child('kpi_metrics', 'metric'),
-      'reservations': await child('ipo_reservations', 'category'),
-      'lotSizes': await child('lot_size_tiers', 'applicant'),
-      'importantDates': await child('important_dates', 'sort_order'),
+      'gmp': await child(SupabaseTables.gmpHistory, 'recorded_at'),
+      'subscriptions': await child(SupabaseTables.subscriptionSnapshots, 'subscription_date'),
+      'financials': await child(SupabaseTables.financialPeriods, 'period'),
+      'kpis': await child(SupabaseTables.kpiMetrics, 'metric'),
+      'reservations': await child(SupabaseTables.ipoReservations, 'category'),
+      'lotSizes': await child(SupabaseTables.lotSizeTiers, 'applicant'),
+      'importantDates': await child(SupabaseTables.importantDates, 'sort_order'),
       'company': companyMap,
     };
     return IpoDetailModel.fromJson(aggregate);

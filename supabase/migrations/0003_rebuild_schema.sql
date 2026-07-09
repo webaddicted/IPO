@@ -1,5 +1,6 @@
 -- ============================================================================
--- IPO Tracker — Rebuild schema (master ipos + 14 child table groups)
+-- IPO Tracker — Rebuild schema (master ipo_ipos + 14 child table groups)
+-- All tables use the ipo_ prefix for shared Supabase project namespacing.
 -- WARNING: Drops all existing IPO data. Run only after backup.
 -- ============================================================================
 
@@ -14,24 +15,37 @@ drop table if exists important_dates cascade;
 drop table if exists ipos cascade;
 
 -- Also drop new names if re-running
+drop table if exists ipo_peer_comparisons cascade;
+drop table if exists ipo_gmp_history cascade;
+drop table if exists ipo_subscription_snapshots cascade;
+drop table if exists ipo_financial_periods cascade;
+drop table if exists ipo_kpi_metrics cascade;
+drop table if exists ipo_reservations cascade;
+drop table if exists ipo_lot_size_tiers cascade;
+drop table if exists ipo_anchor_investors cascade;
+drop table if exists ipo_reviews cascade;
+drop table if exists ipo_drhp_milestones cascade;
+drop table if exists ipo_lead_managers cascade;
+drop table if exists ipo_contacts cascade;
+drop table if exists ipo_company_profiles cascade;
+drop table if exists ipo_ipos cascade;
+
+-- Legacy unprefixed names from earlier migrations
 drop table if exists peer_comparisons cascade;
 drop table if exists gmp_history cascade;
 drop table if exists subscription_snapshots cascade;
 drop table if exists financial_periods cascade;
 drop table if exists kpi_metrics cascade;
-drop table if exists ipo_reservations cascade;
 drop table if exists lot_size_tiers cascade;
 drop table if exists anchor_investors cascade;
-drop table if exists ipo_reviews cascade;
 drop table if exists drhp_milestones cascade;
 drop table if exists lead_managers cascade;
-drop table if exists ipo_contacts cascade;
 drop table if exists company_profiles cascade;
 
 -- ----------------------------------------------------------------------------
 -- 1. MASTER
 -- ----------------------------------------------------------------------------
-create table ipos (
+create table ipo_ipos (
   id                          uuid primary key default gen_random_uuid(),
   source_chittorgarh_id       bigint unique not null,
   source_slug                 text unique not null,
@@ -87,16 +101,16 @@ create table ipos (
   last_scraped_at             timestamptz
 );
 
-create index idx_ipos_chittorgarh_id on ipos (source_chittorgarh_id);
-create index idx_ipos_status on ipos (status);
-create index idx_ipos_type on ipos (ipo_type);
+create index idx_ipo_ipos_chittorgarh_id on ipo_ipos (source_chittorgarh_id);
+create index idx_ipo_ipos_status on ipo_ipos (status);
+create index idx_ipo_ipos_type on ipo_ipos (ipo_type);
 
 -- ----------------------------------------------------------------------------
 -- 2. COMPANY PROFILE (1:1)
 -- ----------------------------------------------------------------------------
-create table company_profiles (
+create table ipo_company_profiles (
   id              uuid primary key default gen_random_uuid(),
-  ipo_id          uuid not null unique references ipos(id) on delete cascade,
+  ipo_id          uuid not null unique references ipo_ipos(id) on delete cascade,
   description     text,
   industry        varchar(255),
   promoters       text,
@@ -118,7 +132,7 @@ create table company_profiles (
 -- ----------------------------------------------------------------------------
 create table ipo_contacts (
   id            uuid primary key default gen_random_uuid(),
-  ipo_id        uuid not null references ipos(id) on delete cascade,
+  ipo_id        uuid not null references ipo_ipos(id) on delete cascade,
   contact_type  varchar(30) not null,
   name          varchar(255),
   phone         varchar(50),
@@ -132,9 +146,9 @@ create index idx_ipo_contacts_ipo on ipo_contacts (ipo_id);
 -- ----------------------------------------------------------------------------
 -- 4. LEAD MANAGERS
 -- ----------------------------------------------------------------------------
-create table lead_managers (
+create table ipo_lead_managers (
   id          uuid primary key default gen_random_uuid(),
-  ipo_id      uuid not null references ipos(id) on delete cascade,
+  ipo_id      uuid not null references ipo_ipos(id) on delete cascade,
   name        varchar(255) not null,
   address     text,
   website     text,
@@ -142,14 +156,14 @@ create table lead_managers (
   phone       varchar(100),
   is_primary  boolean default false
 );
-create index idx_lead_managers_ipo on lead_managers (ipo_id);
+create index idx_ipo_lead_managers_ipo on ipo_lead_managers (ipo_id);
 
 -- ----------------------------------------------------------------------------
 -- 5. IMPORTANT DATES / TIMETABLE
 -- ----------------------------------------------------------------------------
-create table important_dates (
+create table ipo_important_dates (
   id          uuid primary key default gen_random_uuid(),
-  ipo_id      uuid not null references ipos(id) on delete cascade,
+  ipo_id      uuid not null references ipo_ipos(id) on delete cascade,
   event       varchar(100) not null,
   event_date  date,
   sort_order  integer default 0,
@@ -159,9 +173,9 @@ create table important_dates (
 -- ----------------------------------------------------------------------------
 -- 6. LOT SIZE TIERS
 -- ----------------------------------------------------------------------------
-create table lot_size_tiers (
+create table ipo_lot_size_tiers (
   id        uuid primary key default gen_random_uuid(),
-  ipo_id    uuid not null references ipos(id) on delete cascade,
+  ipo_id    uuid not null references ipo_ipos(id) on delete cascade,
   applicant varchar(50) not null,
   lots      integer,
   shares    bigint,
@@ -174,7 +188,7 @@ create table lot_size_tiers (
 -- ----------------------------------------------------------------------------
 create table ipo_reservations (
   id                  uuid primary key default gen_random_uuid(),
-  ipo_id              uuid not null references ipos(id) on delete cascade,
+  ipo_id              uuid not null references ipo_ipos(id) on delete cascade,
   category            varchar(100) not null,
   shares_offered      bigint,
   percent_of_net_issue numeric(7,2),
@@ -186,9 +200,9 @@ create table ipo_reservations (
 -- ----------------------------------------------------------------------------
 -- 8. ANCHOR INVESTORS
 -- ----------------------------------------------------------------------------
-create table anchor_investors (
+create table ipo_anchor_investors (
   id                uuid primary key default gen_random_uuid(),
-  ipo_id            uuid not null references ipos(id) on delete cascade,
+  ipo_id            uuid not null references ipo_ipos(id) on delete cascade,
   entity_name       varchar(500),
   fund_house        varchar(255),
   shares_allotted   bigint,
@@ -197,14 +211,14 @@ create table anchor_investors (
   percent_of_issue  numeric(7,2),
   sort_order        integer default 0
 );
-create index idx_anchor_investors_ipo on anchor_investors (ipo_id);
+create index idx_ipo_anchor_investors_ipo on ipo_anchor_investors (ipo_id);
 
 -- ----------------------------------------------------------------------------
 -- 9. IPO REVIEW (1:1)
 -- ----------------------------------------------------------------------------
 create table ipo_reviews (
   id                uuid primary key default gen_random_uuid(),
-  ipo_id            uuid not null unique references ipos(id) on delete cascade,
+  ipo_id            uuid not null unique references ipo_ipos(id) on delete cascade,
   conclusion        text,
   recommendation    varchar(50),
   review_conclusion varchar(100),
@@ -215,9 +229,9 @@ create table ipo_reviews (
 -- ----------------------------------------------------------------------------
 -- 10. DRHP MILESTONES
 -- ----------------------------------------------------------------------------
-create table drhp_milestones (
+create table ipo_drhp_milestones (
   id              uuid primary key default gen_random_uuid(),
-  ipo_id          uuid not null references ipos(id) on delete cascade,
+  ipo_id          uuid not null references ipo_ipos(id) on delete cascade,
   milestone_code  integer,
   description     varchar(255),
   milestone_date  date,
@@ -227,9 +241,9 @@ create table drhp_milestones (
 -- ----------------------------------------------------------------------------
 -- 11. FINANCIAL PERIODS
 -- ----------------------------------------------------------------------------
-create table financial_periods (
+create table ipo_financial_periods (
   id                uuid primary key default gen_random_uuid(),
-  ipo_id            uuid not null references ipos(id) on delete cascade,
+  ipo_id            uuid not null references ipo_ipos(id) on delete cascade,
   period            varchar(20),
   total_assets      numeric(16,2),
   revenue           numeric(16,2),
@@ -245,9 +259,9 @@ create table financial_periods (
 -- ----------------------------------------------------------------------------
 -- 12. KPI METRICS
 -- ----------------------------------------------------------------------------
-create table kpi_metrics (
+create table ipo_kpi_metrics (
   id      uuid primary key default gen_random_uuid(),
-  ipo_id  uuid not null references ipos(id) on delete cascade,
+  ipo_id  uuid not null references ipo_ipos(id) on delete cascade,
   metric  varchar(50) not null,
   value   numeric(14,4),
   unit    varchar(20),
@@ -257,9 +271,9 @@ create table kpi_metrics (
 -- ----------------------------------------------------------------------------
 -- 13. SUBSCRIPTION SNAPSHOTS
 -- ----------------------------------------------------------------------------
-create table subscription_snapshots (
+create table ipo_subscription_snapshots (
   id                      uuid primary key default gen_random_uuid(),
-  ipo_id                  uuid not null references ipos(id) on delete cascade,
+  ipo_id                  uuid not null references ipo_ipos(id) on delete cascade,
   bucket                  varchar(20) not null default 'overall',
   subscription_date       date,
   total_subscription      numeric(10,2),
@@ -278,23 +292,23 @@ create table subscription_snapshots (
 -- ----------------------------------------------------------------------------
 -- 14. GMP HISTORY
 -- ----------------------------------------------------------------------------
-create table gmp_history (
+create table ipo_gmp_history (
   id                      uuid primary key default gen_random_uuid(),
-  ipo_id                  uuid not null references ipos(id) on delete cascade,
+  ipo_id                  uuid not null references ipo_ipos(id) on delete cascade,
   issue_price             numeric(12,2),
   gmp_price               numeric(12,2),
   gmp_percent             numeric(7,2),
   estimated_listing_price numeric(12,2),
   recorded_at             timestamptz not null default now()
 );
-create index idx_gmp_history_ipo on gmp_history (ipo_id, recorded_at desc);
+create index idx_ipo_gmp_history_ipo on ipo_gmp_history (ipo_id, recorded_at desc);
 
 -- ----------------------------------------------------------------------------
 -- 15. PEER COMPARISONS
 -- ----------------------------------------------------------------------------
-create table peer_comparisons (
+create table ipo_peer_comparisons (
   id                uuid primary key default gen_random_uuid(),
-  ipo_id            uuid not null references ipos(id) on delete cascade,
+  ipo_id            uuid not null references ipo_ipos(id) on delete cascade,
   peer_company_name varchar(255) not null,
   eps               numeric(14,4),
   nav               numeric(14,4),
@@ -313,9 +327,9 @@ begin
 end;
 $$ language plpgsql;
 
-drop trigger if exists trg_ipos_updated_at on ipos;
-create trigger trg_ipos_updated_at
-  before update on ipos
+drop trigger if exists trg_ipo_ipos_updated_at on ipo_ipos;
+create trigger trg_ipo_ipos_updated_at
+  before update on ipo_ipos
   for each row execute function set_updated_at();
 
 -- ----------------------------------------------------------------------------
@@ -325,10 +339,10 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'ipos','company_profiles','ipo_contacts','lead_managers','important_dates',
-    'lot_size_tiers','ipo_reservations','anchor_investors','ipo_reviews',
-    'drhp_milestones','financial_periods','kpi_metrics','subscription_snapshots',
-    'gmp_history','peer_comparisons'
+    'ipo_ipos','ipo_company_profiles','ipo_contacts','ipo_lead_managers','ipo_important_dates',
+    'ipo_lot_size_tiers','ipo_reservations','ipo_anchor_investors','ipo_reviews',
+    'ipo_drhp_milestones','ipo_financial_periods','ipo_kpi_metrics','ipo_subscription_snapshots',
+    'ipo_gmp_history','ipo_peer_comparisons'
   ] loop
     execute format('alter table %I enable row level security;', t);
     execute format('drop policy if exists "public_read" on %I;', t);

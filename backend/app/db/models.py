@@ -15,7 +15,7 @@ class Base(DeclarativeBase):
 
 
 class Ipo(Base):
-    __tablename__ = "ipos"
+    __tablename__ = "ipo_ipos"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_chittorgarh_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
@@ -79,7 +79,7 @@ class Ipo(Base):
 
 
 class CompanyProfile(Base):
-    __tablename__ = "company_profiles"
+    __tablename__ = "ipo_company_profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, nullable=False)
@@ -114,7 +114,7 @@ class IpoContact(Base):
 
 
 class LeadManager(Base):
-    __tablename__ = "lead_managers"
+    __tablename__ = "ipo_lead_managers"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -127,7 +127,7 @@ class LeadManager(Base):
 
 
 class ImportantDate(Base):
-    __tablename__ = "important_dates"
+    __tablename__ = "ipo_important_dates"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -137,7 +137,7 @@ class ImportantDate(Base):
 
 
 class LotSizeTier(Base):
-    __tablename__ = "lot_size_tiers"
+    __tablename__ = "ipo_lot_size_tiers"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -164,7 +164,7 @@ class IpoReservation(Base):
 
 
 class AnchorInvestor(Base):
-    __tablename__ = "anchor_investors"
+    __tablename__ = "ipo_anchor_investors"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -190,7 +190,7 @@ class IpoReview(Base):
 
 
 class DrhpMilestone(Base):
-    __tablename__ = "drhp_milestones"
+    __tablename__ = "ipo_drhp_milestones"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -200,7 +200,7 @@ class DrhpMilestone(Base):
 
 
 class FinancialPeriod(Base):
-    __tablename__ = "financial_periods"
+    __tablename__ = "ipo_financial_periods"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -216,7 +216,7 @@ class FinancialPeriod(Base):
 
 
 class KpiMetric(Base):
-    __tablename__ = "kpi_metrics"
+    __tablename__ = "ipo_kpi_metrics"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -226,7 +226,7 @@ class KpiMetric(Base):
 
 
 class SubscriptionSnapshot(Base):
-    __tablename__ = "subscription_snapshots"
+    __tablename__ = "ipo_subscription_snapshots"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -245,7 +245,7 @@ class SubscriptionSnapshot(Base):
 
 
 class GmpHistory(Base):
-    __tablename__ = "gmp_history"
+    __tablename__ = "ipo_gmp_history"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
@@ -257,7 +257,7 @@ class GmpHistory(Base):
 
 
 class PeerComparison(Base):
-    __tablename__ = "peer_comparisons"
+    __tablename__ = "ipo_peer_comparisons"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ipo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)

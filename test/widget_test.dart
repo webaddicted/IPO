@@ -4,43 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:untitled_poi/global/constant/registrar_portal.dart';
 import 'package:untitled_poi/features/ipo_detail/domain/allotment_model.dart';
-import 'package:untitled_poi/features/home/domain/ipo_model.dart';
-import 'package:untitled_poi/global/services/mock_data.dart';
 import 'package:untitled_poi/global/utils/global_utility.dart';
 import 'package:untitled_poi/global/utils/date_utility.dart';
 
 void main() {
-  group('MockData', () {
-    test('returns SME current IPOs (UHM Vacation)', () {
-      final smeCurrent = MockData.ipos(kind: IpoKind.sme, listed: false);
-      expect(smeCurrent, isNotEmpty);
-      expect(smeCurrent.first.companyName, 'UHM Vacation');
-      expect(smeCurrent.first.kind, IpoKind.sme);
-    });
-
-    test('separates listed from current', () {
-      final listed = MockData.ipos(kind: IpoKind.mainline, listed: true);
-      expect(listed.every((i) => i.status == IpoStatus.listed), isTrue);
-
-      final current = MockData.ipos(kind: IpoKind.mainline, listed: false);
-      expect(current.every((i) => i.status != IpoStatus.listed), isTrue);
-    });
-
-    test('builds full detail aggregate with all tabs populated', () {
-      final detail = MockData.detail('uhm-vacation');
-      expect(detail.ipo.companyName, 'UHM Vacation');
-      expect(detail.gmp, isNotEmpty);
-      expect(detail.subscriptions, isNotEmpty);
-      expect(detail.financials.length, 3);
-      expect(detail.kpis, isNotEmpty);
-      expect(detail.reservations, isNotEmpty);
-      expect(detail.importantDates.length, 6);
-      expect(detail.company, isNotNull);
-      expect(detail.overallSubscription?.total, 2.36);
-      expect(detail.dayWise.length, 3);
-    });
-  });
-
   group('GlobalUtility', () {
     test('formats Indian rupee grouping', () {
       expect(GlobalUtility.rupee(132800), '₹1,32,800');
