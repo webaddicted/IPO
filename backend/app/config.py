@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
-from __future__ import annotations
-
-import re
 from functools import lru_cache
-from urllib.parse import quote_plus, urlparse, urlunparse
+from urllib.parse import quote_plus, parse_qs, urlencode, urlparse, urlunparse
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _strip_quotes(value: str | None) -> str | None:
+    if value is None:
+        return None
+    s = value.strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        return s[1:-1]
+    return s
 
 
 def jdbc_to_sqlalchemy_url(jdbc_url: str, user: str, password: str) -> str:
@@ -27,9 +33,12 @@ def jdbc_to_sqlalchemy_url(jdbc_url: str, user: str, password: str) -> str:
             creds = f"{creds}:{quote_plus(password)}"
         netloc = f"{creds}@{netloc}"
     path = parsed.path or "/postgres"
-    query = parsed.query.replace("prepareThreshold=0", "").strip("&")
-    rebuilt = urlunparse(("postgresql+psycopg2", netloc, path, "", query, ""))
-    return rebuilt.rstrip("?")
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    params.pop("prepareThreshold", None)
+    if "sslmode" not in params:
+        params["sslmode"] = ["require"]
+    query = urlencode({k: v[0] for k, v in params.items()})
+    return urlunparse(("postgresql+psycopg2", netloc, path, "", query, ""))
 
 
 class Settings(BaseSettings):
@@ -66,6 +75,21 @@ class Settings(BaseSettings):
 
     cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        if isinstance(value, str):
+            stripped = _strip_quotes(value)
+            return None if not stripped else stripped
+        return value
+
+    @field_validator("supabase_db_url", "supabase_db_user", "supabase_db_password", mode="before")
+    @classmethod
+    def strip_env_quotes(cls, value: object) -> object:
+        if isinstance(value, str):
+            return _strip_quotes(value) or value
+        return value
+
     @property
     def scraper_interval_seconds(self) -> int:
         """Scrape interval in seconds (min 60s). Prefers SCRAPER_INTERVAL_MINUTES."""
@@ -86,6 +110,10 @@ class Settings(BaseSettings):
             self.supabase_db_user,
             self.supabase_db_password,
         )
+
+    @property
+    def uses_supabase_pooler(self) -> bool:
+        return "pooler.supabase.com" in self.sqlalchemy_url
 
     @property
     def cors_origin_list(self) -> list[str]:

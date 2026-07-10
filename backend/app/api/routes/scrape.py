@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.services.scrape_service import ScrapeIncompleteError, run_scrape
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1",
@@ -30,6 +35,25 @@ def scrape_data(db: Session = Depends(get_db)) -> dict:
                 "status": "incomplete",
                 "issues": exc.issues,
                 **exc.counts,
+            },
+        ) from exc
+    except SQLAlchemyError as exc:
+        log.exception("Scrape failed — database error")
+        detail = str(exc.orig) if getattr(exc, "orig", None) else str(exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "database_error",
+                "message": detail,
+            },
+        ) from exc
+    except Exception as exc:
+        log.exception("Scrape failed")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": str(exc),
             },
         ) from exc
 
