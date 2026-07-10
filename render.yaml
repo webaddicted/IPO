@@ -1,5 +1,6 @@
 # Render Blueprint — repo root (default path Render looks for)
-# Services run from backend/ via rootDir
+# API only (free tier, no payment required).
+# Hourly scraping: use free https://cron-job.org → GET https://<your-api>.onrender.com/api/v1/scrape
 
 services:
   - type: web
@@ -27,34 +28,3 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
-
-  - type: cron
-    name: aaipo-scraper
-    runtime: python
-    rootDir: backend
-    schedule: "0 * * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/run_scrape_once.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.9
-      - key: SUPABASE_DB_URL
-        fromService:
-          type: web
-          name: aaipo-api
-          envVarKey: SUPABASE_DB_URL
-      - key: SUPABASE_DB_USER
-        fromService:
-          type: web
-          name: aaipo-api
-          envVarKey: SUPABASE_DB_USER
-      - key: SUPABASE_DB_PASSWORD
-        fromService:
-          type: web
-          name: aaipo-api
-          envVarKey: SUPABASE_DB_PASSWORD
-      - key: DATABASE_URL
-        fromService:
-          type: web
-          name: aaipo-api
-          envVarKey: DATABASE_URL

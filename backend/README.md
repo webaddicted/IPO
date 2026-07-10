@@ -99,18 +99,24 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 1. Push this repo to GitHub.
 2. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**.
-3. Connect the repo and set blueprint path to `backend/render.yaml`.
+3. Connect the repo; blueprint path: **`render.yaml`** (repo root).
 4. When prompted, set:
    - `SUPABASE_DB_URL` — Supabase pooler JDBC URL (port 6543)
    - `SUPABASE_DB_USER` — e.g. `postgres.your-project-ref`
    - `SUPABASE_DB_PASSWORD` — database password from Supabase
-5. Apply deploy. You get:
-   - **`aaipo-api`** — FastAPI at `https://aaipo-api.onrender.com` (free tier)
-   - **`aaipo-scraper`** — cron every hour (`0 * * * *` UTC) via `scripts/run_scrape_once.py`
+5. Deploy. You get **`aaipo-api`** (free web service, no payment required).
 
-The web service runs API only (`SCHEDULER_ENABLED=false`). Scraping is **not** in-process; the cron job writes directly to Supabase.
+**Hourly scraper (free, no Render cron):** Render cron jobs require billing (~$1/mo). Use [cron-job.org](https://cron-job.org) instead:
 
-Trigger a manual scrape: Render → **aaipo-scraper** → **Trigger Run**, or call `GET /api/v1/scrape` on the API URL.
+| Setting | Value |
+|---------|--------|
+| URL | `https://<your-api>.onrender.com/api/v1/scrape` |
+| Schedule | Every 1 hour |
+| Method | GET |
+
+Also ping `/health` every 10 min on cron-job.org to reduce cold starts (optional).
+
+Trigger a manual scrape: `GET https://<your-api>.onrender.com/api/v1/scrape`
 
 ### Flutter client (production)
 
