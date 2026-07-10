@@ -95,9 +95,30 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/pytest tests/ -q
 ```
 
-## Flutter client
+## Deploy on Render (free API + hourly scraper)
 
-Point the app at this API:
+1. Push this repo to GitHub.
+2. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**.
+3. Connect the repo and set blueprint path to `backend/render.yaml`.
+4. When prompted, set:
+   - `SUPABASE_DB_URL` — Supabase pooler JDBC URL (port 6543)
+   - `SUPABASE_DB_USER` — e.g. `postgres.your-project-ref`
+   - `SUPABASE_DB_PASSWORD` — database password from Supabase
+5. Apply deploy. You get:
+   - **`aaipo-api`** — FastAPI at `https://aaipo-api.onrender.com` (free tier)
+   - **`aaipo-scraper`** — cron every hour (`0 * * * *` UTC) via `scripts/run_scrape_once.py`
+
+The web service runs API only (`SCHEDULER_ENABLED=false`). Scraping is **not** in-process; the cron job writes directly to Supabase.
+
+Trigger a manual scrape: Render → **aaipo-scraper** → **Trigger Run**, or call `GET /api/v1/scrape` on the API URL.
+
+### Flutter client (production)
+
+```bash
+flutter run --dart-define=API_BASE_URL=https://aaipo-api.onrender.com
+```
+
+### Flutter client (local)
 
 ```bash
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8081
