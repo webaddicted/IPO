@@ -24,8 +24,18 @@ listing screen and a 12-tab detail screen.
 | Layer | Tech | Folder |
 |-------|------|--------|
 | Database | Supabase / PostgreSQL | [`supabase/`](supabase/) |
-| Backend API + scraper | Java 17, Spring Boot 3.3, JSoup | [`backend/`](backend/) |
+| Backend API + scraper | Python, FastAPI, BeautifulSoup | [`backend/`](backend/) |
 | Mobile app | Flutter, GetX | [`lib/`](lib/) |
+
+## Production API
+
+| | URL |
+|--|-----|
+| **API base** | https://aaipo-api.onrender.com |
+| **Swagger docs** | https://aaipo-api.onrender.com/docs |
+| **Health** | https://aaipo-api.onrender.com/health |
+
+The Flutter app defaults to the production API (`lib/global/constant/app_config.dart`).
 
 ## Quick start
 
@@ -45,7 +55,11 @@ See [`backend/README.md`](backend/README.md).
 ### 3. Flutter app
 ```bash
 flutter pub get
+flutter run
+```
 
+Production API is used by default. For local backend:
+```bash
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8081
 ```
 

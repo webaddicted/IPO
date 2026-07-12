@@ -3,6 +3,7 @@ import 'package:untitled_poi/global/base/base_repository.dart';
 import 'package:untitled_poi/global/constant/app_config.dart';
 import 'package:untitled_poi/global/constant/registrar_portal.dart';
 import 'package:untitled_poi/features/home/domain/ipo_model.dart';
+import 'package:untitled_poi/features/home/domain/ipo_list_sort.dart';
 import 'package:untitled_poi/features/ipo_detail/domain/ipo_detail_model.dart';
 import 'package:untitled_poi/features/ipo_detail/domain/allotment_model.dart';
 import 'package:untitled_poi/global/services/api_service.dart';
@@ -31,21 +32,30 @@ class IpoRepository extends BaseRepository {
   }
 
   Future<List<IpoModel>> fetchIpos({required IpoKind kind, required bool listed}) async {
+    List<IpoModel> result;
     if (AppConfig.hasApi) {
       try {
-        return listed ? await _api.listed(kind) : await _api.current(kind);
+        result = listed ? await _api.listed(kind) : await _api.current(kind);
       } catch (e) {
         debugPrint('API list failed: $e');
         if (_supabase != null) {
-          return _supabase.fetchIpos(kind: kind, listed: listed);
+          result = await _supabase.fetchIpos(kind: kind, listed: listed);
+        } else {
+          rethrow;
         }
-        rethrow;
       }
+    } else if (_supabase != null) {
+      result = await _supabase.fetchIpos(kind: kind, listed: listed);
+    } else {
+      throw ApiException('No API configured. Start the backend on port 8081.');
     }
-    if (_supabase != null) {
-      return _supabase.fetchIpos(kind: kind, listed: listed);
+
+    if (listed) {
+      sortListedIpos(result);
+    } else {
+      sortCurrentIpos(result);
     }
-    throw ApiException('No API configured. Start the backend on port 8081.');
+    return result;
   }
 
   Future<IpoDetailModel> fetchDetail(String id) async {

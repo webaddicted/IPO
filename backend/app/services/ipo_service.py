@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.db.enums import IpoKind, IpoStatus
@@ -48,6 +48,14 @@ from app.schemas.ipo import (
 
 
 class IpoService:
+    # Current IPO tab order: open → closed → upcoming
+    _CURRENT_STATUS_ORDER = case(
+        (Ipo.status == IpoStatus.open.value, 1),
+        (Ipo.status == IpoStatus.closed.value, 2),
+        (Ipo.status == IpoStatus.upcoming.value, 3),
+        else_=4,
+    )
+
     def __init__(self, db: Session) -> None:
         self._db = db
 
@@ -56,7 +64,7 @@ class IpoService:
         rows = self._db.scalars(
             select(Ipo)
             .where(Ipo.ipo_type == kind.value, Ipo.status.in_(statuses))
-            .order_by(Ipo.open_date.desc())
+            .order_by(self._CURRENT_STATUS_ORDER, Ipo.open_date.desc().nulls_last())
         ).all()
         return [IpoSummary.model_validate(r) for r in rows]
 

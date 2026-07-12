@@ -203,31 +203,35 @@ class _MainContent extends StatelessWidget {
     return Obx(() {
       final nav = controller.navIndex.value;
       final kindLabel = nav == 1 ? 'SME' : 'Mainline';
-      return CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: HeroBanner(
-              title: nav == 2 ? 'Exclusive Offers' : '$kindLabel IPOs',
-              subtitle: nav == 2
-                  ? 'Broker deals & launch perks'
-                  : 'Real-time GMP, subscription & listing data',
-              bottom: nav != 2
-                  ? SegmentedPills(
-                      labels: const [StringConst.currentIpo, StringConst.listedIpo],
-                      selectedIndex: controller.tabIndex.value,
-                      onChanged: controller.selectTab,
-                    )
-                  : null,
+      return RefreshIndicator(
+        onRefresh: controller.refreshData,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: HeroBanner(
+                title: nav == 2 ? 'Exclusive Offers' : '$kindLabel IPOs',
+                subtitle: nav == 2
+                    ? 'Broker deals & launch perks'
+                    : 'Real-time GMP, subscription & listing data',
+                bottom: nav != 2
+                    ? SegmentedPills(
+                        labels: const [StringConst.currentIpo, StringConst.listedIpo],
+                        selectedIndex: controller.tabIndex.value,
+                        onChanged: controller.selectTab,
+                      )
+                    : null,
+              ),
             ),
-          ),
-          if (nav == 2)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: _OffersPlaceholder(),
-            )
-          else
-            _IpoListSliver(controller: controller),
-        ],
+            if (nav == 2)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: _OffersPlaceholder(),
+              )
+            else
+              _IpoListSliver(controller: controller),
+          ],
+        ),
       );
     });
   }
@@ -272,26 +276,19 @@ class _IpoListSliver extends StatelessWidget {
       if (cols == 1) {
         return SliverPadding(
           padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 24),
-          sliver: SliverToBoxAdapter(
-            child: RefreshIndicator(
-              onRefresh: controller.refreshData,
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: controller.ipos.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 14),
-                itemBuilder: (context, i) {
-                  final ipo = controller.ipos[i];
-                  return IpoCard(
-                    ipo: ipo,
-                    onTap: () => Get.toNamed(
-                      Routes.detail,
-                      arguments: {'id': ipo.id, 'name': ipo.companyName},
-                    ),
-                  );
-                },
-              ),
-            ),
+          sliver: SliverList.separated(
+            itemCount: controller.ipos.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 14),
+            itemBuilder: (context, i) {
+              final ipo = controller.ipos[i];
+              return IpoCard(
+                ipo: ipo,
+                onTap: () => Get.toNamed(
+                  Routes.detail,
+                  arguments: {'id': ipo.id, 'name': ipo.companyName},
+                ),
+              );
+            },
           ),
         );
       }
